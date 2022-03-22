@@ -108,6 +108,36 @@ message LongUnit {
 	Pos To = 3;
 }
 
+message InSubQuery {
+	CompoundIdent Expr = 1;
+	QueryStmt SubQuery = 2;
+	bool Negated = 3;
+	Pos RParen = 4;
+}
+
+message SubQuery {
+	Pos LParen = 1;
+	Pos RParen = 2;
+	QueryStmt Query = 3;
+}
+
+message BinaryExpr {
+	oneof LeftOneOf {
+		CompoundIdent LeftIdents = 1;
+		BinaryExpr LeftBinary = 2;
+	}
+	Operator Op = 3;
+	oneof RightOneOf {
+		CompoundIdent RightIdents = 4;
+		BinaryExpr RightBinary = 5;
+		SubQuery   QueryValue = 6;
+		InSubQuery InQueryValue = 7;
+		StringUnit SingleQuotedString = 8;
+		DoubleUnit DoubleValue = 9;
+		LongUnit LongValue = 10;
+	}
+}
+
 message QueryStmt {
 	Pos With = 1;
 
@@ -117,29 +147,6 @@ message QueryStmt {
 		Pos RParen = 3;
 	}
 	repeated CTE CTEs = 2;
-
-	message InSubQuery {
-		CompoundIdent Expr = 1;
-		QueryStmt SubQuery = 2;
-		bool Negated = 3;
-		Pos RParen = 4;
-	}
-
-	message BinaryExpr {
-		oneof LeftOneOf {
-			CompoundIdent LeftIdents = 1;
-			BinaryExpr LeftBinary = 2;
-		}
-		Operator Op = 3;
-		oneof RightOneOf {
-			CompoundIdent RightIdents = 4;
-			BinaryExpr RightBinary = 5;
-			InSubQuery QueryValue = 6;
-			StringUnit SingleQuotedString = 7;
-			DoubleUnit DoubleValue = 8;
-			LongUnit LongValue = 9;
-		}
-	}
 
 	message SQLSelect {
 		bool DistinctBool = 1;
@@ -196,4 +203,68 @@ message QueryStmt {
 		LongUnit OffsetValue = 5;
 	}
 	LimitExpr LimitExpression = 6;
+}
+
+message Assignment {
+	CompoundIdent AssignmentID = 1;
+	oneof ValueOneOf {
+		CompoundIdent RightIdents = 2;
+		BinaryExpr RightBinary = 3;
+		SubQuery QueryValue = 4;
+		StringUnit SingleQuotedString = 5;
+		DoubleUnit DoubleValue = 6;
+		LongUnit LongValue = 7;
+	}
+}
+
+message UpdateStmt {
+	Pos Update = 1;
+	CompoundIdent TableName = 2;
+
+	repeated Assignment Assignments = 3;
+	oneof Selection {
+		InSubQuery InQuery = 4;
+		BinaryExpr BinExpr = 5;
+	}
+}
+
+message DeleteStmt {
+	Pos Delete = 1;
+	CompoundIdent TableName = 2;
+
+	oneof Selection {
+		InSubQuery InQuery = 4;
+		BinaryExpr BinExpr = 5;
+	}
+}
+
+message NativeValue {
+	oneof NativeOneOf {
+		StringUnit SingleQuotedString = 1;
+		DoubleUnit DoubleValue = 2;
+		LongUnit LongValue = 3;
+	}
+}
+
+message ConstructorSource {
+	Pos Values = 1;
+	message RowValueExpr {
+		Pos LParen = 1;
+		Pos RParen = 2;
+		repeated NativeValue Values = 3;
+	}
+	repeated RowValueExpr Rows = 2;
+}
+
+message InsertStmt {
+	Pos Insert = 1;
+	Ident TableName = 2;
+	repeated Ident Columns = 3;
+
+	oneof InsertSource {
+		ConstructorSource Constructor = 4;
+		SubQuery QuerySource = 5;
+	}
+
+	repeated Assignment UpdateAssignments = 6;
 }
