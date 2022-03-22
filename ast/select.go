@@ -23,22 +23,8 @@ func xselectTo(body *sqlast.SQLSelect) (*xast.QueryStmt_SQLSelect, error) {
 		query.FromClause = append(query.FromClause, from)
 	}
 
-	if body.WhereClause != nil {
-		switch t := body.WhereClause.(type) {
-		case *sqlast.InSubQuery:
-			where, err := xinsubqueryTo(t)
-			if err != nil { return nil, err }
-			inQuery := &xast.QueryStmt_SQLSelect_InQuery{InQuery: where}
-			query.WhereClause = inQuery
-		case *sqlast.BinaryExpr:
-			where, err := xbinaryexprTo(t)
-			if err != nil { return nil, err }
-			binExpr := &xast.QueryStmt_SQLSelect_BinExpr{BinExpr: where}
-			query.WhereClause = binExpr
-		default:
-			return nil, fmt.Errorf("'where' type %#v", t)
-		}
-	}
+	err := xbodywhereTo(body, query)
+	if err != nil { return nil, err }
 
 	for _, item := range body.GroupByClause {
 		switch t := item.(type) {
@@ -77,11 +63,7 @@ func selectTo(body *xast.QueryStmt_SQLSelect) *sqlast.SQLSelect {
 		query.FromClause = append(query.FromClause, tablereferenceTo(item))
 	}
 
-	if v := body.GetInQuery(); v != nil {
-		query.WhereClause = insubqueryTo(v)
-	} else if v := body.GetBinExpr(); v != nil {
-		query.WhereClause = binaryexprTo(v)
-	}
+	bodywhereTo(body, query)
 
 	for _, item := range body.GroupByClause {
 		query.GroupByClause = append(query.GroupByClause, compoundTo(item))

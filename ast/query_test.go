@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-//	"github.com/k0kubun/pp"
+	"github.com/k0kubun/pp"
 
 	"github.com/akito0107/xsqlparser"
 	"github.com/akito0107/xsqlparser/sqlast"
@@ -14,6 +14,9 @@ import (
 
 func TestQuery(t *testing.T) {
 	strs := []string{
+	"UPDATE y.test_table SET cola = 'a' WHERE bb in (SELECT region FROM top_regions)",
+	"UPDATE wine SET vendorcost=vendor.ship-1, price=19.9, stock = stock - ( SELECT SUM (quantity) FROM order WHERE date = CURRENT_DATE AND order.wine_name = wine.name) WHERE x=1 AND y=2 AND z=m",
+	"INSERT INTO CUSTOMERS_BKP SELECT * FROM CUSTOMERS WHERE ID IN (SELECT ID FROM CUSTOMERS)",
 	"SELECT a from test_table",
 	"SELECT * from test_table",
 	"SELECT test_table.* from test_table",
@@ -40,17 +43,31 @@ func TestQuery(t *testing.T) {
 		parser, err := xsqlparser.NewParser(bytes.NewBufferString(str), &dialect.GenericSQLDialect{})
 		if err != nil { t.Fatal(err) }
 
+		var str1, str2 string
 		istmt, err := parser.ParseStatement()
 		if err != nil { t.Fatal(err) }
-		stmt := istmt.(*sqlast.QueryStmt)
+		switch stmt := istmt.(type) {
+		case *sqlast.QueryStmt:
+			str1 = stmt.ToSQLString()
+			xquery, err := XQueryTo(stmt)
+			if err != nil { t.Fatal(err) }
+			reverse := QueryTo(xquery)
+			str2 = reverse.ToSQLString()
+		case *sqlast.UpdateStmt:
+			str1 = stmt.ToSQLString()
+			xupdate, err := XUpdateTo(stmt)
+			if err != nil { t.Fatal(err) }
+			reverse := UpdateTo(xupdate)
+			str2 = reverse.ToSQLString()
+		case *sqlast.InsertStmt:
+			str1 = stmt.ToSQLString()
+			pp.Println(stmt)
+		default:
+		}
 
-		xquery, err := XQueryTo(stmt)
-		if err != nil { t.Fatal(err) }
-
-		reverse := QueryTo(xquery)
-		if strings.ToLower(stmt.ToSQLString()) != strings.ToLower(reverse.ToSQLString()) {
-			t.Errorf("%d=>%s", i, stmt.ToSQLString())
-			t.Errorf("%d=>%s", i, reverse.ToSQLString())
+		if strings.ToLower(str1) != strings.ToLower(str2) {
+			t.Errorf("%d=>%s", i, str1)
+			t.Errorf("%d=>%s", i, str2)
 		}
 	}
 }
