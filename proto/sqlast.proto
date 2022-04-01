@@ -258,13 +258,47 @@ message ConstructorSource {
 
 message InsertStmt {
 	Pos Insert = 1;
-	Ident TableName = 2;
+	CompoundIdent TableName = 2;
 	repeated Ident Columns = 3;
 
 	oneof InsertSource {
 		ConstructorSource Constructor = 4;
-		SubQuery QuerySource = 5;
+		QueryStmt QuerySource = 5;
 	}
 
 	repeated Assignment UpdateAssignments = 6;
+}
+
+message TableElement {
+	message ColumnDef {
+		CompoundIdent Name = 1;
+		type DataType = 2;
+		message ColumnConstraint {
+			oneof SpecOneOf {
+			}
+		}
+		repeated ColumnConstraint Constraints = 3;
+	}
+	message TableConstraint {
+		CompoundIdent Name = 1;
+		oneof CheckTableConstraint 
+		oneof UniqueTableConstraint
+		ReferentialTableConstraint
+	}
+	oneof TableElementOneOf {
+		ColumnDef ColDefinition = 1;
+		TableConstraint Constraint = 2;
+	}
+}
+
+message CreateStmt {
+	Pos Create = 1;
+	CompoundIdent Name = 2;
+	repeated TableElement Elements = 3;
+	string Location = 4;
+	bool NotExists = 5;
+
+	message TableOption {
+	}
+	repeated TableOption Options = 6;
 }

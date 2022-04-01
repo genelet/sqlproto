@@ -16,7 +16,11 @@ func TestQuery(t *testing.T) {
 	strs := []string{
 	"UPDATE y.test_table SET cola = 'a' WHERE bb in (SELECT region FROM top_regions)",
 	"UPDATE wine SET vendorcost=vendor.ship-1, price=19.9, stock = stock - ( SELECT SUM (quantity) FROM order WHERE date = CURRENT_DATE AND order.wine_name = wine.name) WHERE x=1 AND y=2 AND z=m",
-	"INSERT INTO CUSTOMERS_BKP SELECT * FROM CUSTOMERS WHERE ID IN (SELECT ID FROM CUSTOMERS)",
+	"INSERT INTO CUSTOMERS SELECT * FROM CUSTOMERS WHERE ID IN (SELECT ID FROM CUSTOMERS)",
+	"INSERT INTO CUSTOMERS VALUES (1, 1.45, 'xxx')",
+	"INSERT INTO CUSTOMERS (id, y, x) VALUES (1, 1.45, 'xxx')",
+	"DELETE FROM CUSTOMERS WHERE ID = 1",
+	"DELETE FROM CUSTOMERS WHERE ID IN (SELECT ID FROM CUSTOMER_IDS)",
 	"SELECT a from test_table",
 	"SELECT * from test_table",
 	"SELECT test_table.* from test_table",
@@ -61,8 +65,20 @@ func TestQuery(t *testing.T) {
 			str2 = reverse.ToSQLString()
 		case *sqlast.InsertStmt:
 			str1 = stmt.ToSQLString()
-			pp.Println(stmt)
+			xinsert, err := XInsertTo(stmt)
+			if err != nil { t.Fatal(err) }
+			reverse := InsertTo(xinsert)
+			str2 = reverse.ToSQLString()
+			str1 = stmt.ToSQLString()
+		case *sqlast.DeleteStmt:
+			str1 = stmt.ToSQLString()
+			xdelete, err := XDeleteTo(stmt)
+			if err != nil { t.Fatal(err) }
+			reverse := DeleteTo(xdelete)
+			str2 = reverse.ToSQLString()
+			str1 = stmt.ToSQLString()
 		default:
+			pp.Println(stmt)
 		}
 
 		if strings.ToLower(str1) != strings.ToLower(str2) {
